@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代辦事項管理</title>
+    <!-- 引入 Bootstrap 樣式 -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 引入 SweetAlert2 樣式 -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.22/dist/sweetalert2.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h2 class="text-center">新增代辦事項</h2>
+        <form id="todoForm">
+            <label for="task">任務:</label>
+            <div class="d-flex w-100">
+                <input type="text" id="task" name="task" required class="form-control" placeholder="請輸入任務內容">
+                <button type="submit" class="btn btn-primary ml-2" style="white-space: nowrap;">提交任務</button>
+            </div>
+        </form>
+
+        <h4 class="mt-5">代辦事項列表:</h4>
+        <table class="table" id="todosTable">
+            <thead>
+                <tr>
+                    <th>任務ID</th>
+                    <th>任務</th>
+                    <th>完成狀態</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 代辦事項將會動態插入到這裡 -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 編輯代辦事項的 Modal -->
+    <div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editModalLabel">編輯代辦事項</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="editTodoForm">
+                        <input type="hidden" id="editTodoId">
+                        <div class="form-group">
+                            <label for="editTask">任務:</label>
+                            <input type="text" id="editTask" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editCompleted">完成狀態:</label>
+                            <div class="form-check form-check-inline">
+                                <input type="radio" id="editCompletedFalse" name="editCompleted" value="false" class="form-check-input">
+                                <label class="form-check-label" for="editCompletedFalse">未完成</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input type="radio" id="editCompletedTrue" name="editCompleted" value="true" class="form-check-input">
+                                <label class="form-check-label" for="editCompletedTrue">已完成</label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">儲存更改</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入 Bootstrap 和 jQuery 的 JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.0/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
+    <!-- 引入 SweetAlert2 庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.22/dist/sweetalert2.all.min.js"></script>
+
+    <script>
+        const form = document.getElementById('todoForm');
+        const todosTableBody = document.querySelector('#todosTable tbody');
+        const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+        const editTodoForm = document.getElementById('editTodoForm');
+    
+        // 提交新增代辦事項
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const task = document.getElementById('task').value;
+            const student_id = '41241411';
+    
+            const requestData = {
+                student_id: student_id,
+                task: task
+            };
+    
+            try {
+                const response = await fetch('https://nfutest.pythonanywhere.com/todos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+    
+                if (response.ok) {
+                    const data = await response.json();
+                    Swal.fire({
+                        title: '任務創建成功！',
+                        icon: 'success',
+                        confirmButtonText: '確認'
+                    });
+                    loadTodos(); // 任務創建成功後重新加載代辦事項列表
+                } else {
+                    const errorData = await response.json();
+                    Swal.fire({
+                        title: '錯誤',
+                        text: errorData.error,
+                        icon: 'error',
+                        confirmButtonText: '確認'
+                    });
+                }
+            } catch (error) {
+                Swal.fire({
+                    title: '請求失敗',
+                    text: error.message,
+                    icon: 'error',
+                    confirmButtonText: '確認'
+                });
+            }
+        });
+    
+        // 獲取代辦事項並展示
+        function loadTodos() {
+            const studentId = '41241411';
+            todosTableBody.innerHTML = '';
+    
+            fetch(`https://nfutest.pythonanywhere.com/todos?student_id=${studentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.todos.length === 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = '<td colspan="4">沒有找到任何代辦事項。</td>';
+                        todosTableBody.appendChild(row);
+                        return;
+                    }
+    
+                    data.todos.forEach(todo => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                        <td>${todo.id}</td>
+                        <td>${todo.task}</td>
+                        <td>${todo.completed ? '已完成' : '未完成'}</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm edit-btn" data-id="${todo.id}" data-task="${todo.task}" data-completed="${todo.completed}">編輯</button>
+                            <button class="btn btn-danger btn-sm delete-btn" data-id="${todo.id}">刪除</button>
+                        </td>
+                    `;
+                        todosTableBody.appendChild(row);
+                    });
+    
+                    // 添加編輯按鈕的事件監聽器
+                    document.querySelectorAll('.edit-btn').forEach(button => {
+                        button.addEventListener('click', (event) => {
+                            const todoId = event.target.dataset.id;
+                            const todoTask = event.target.dataset.task;
+                            const todoCompleted = event.target.dataset.completed;
+    
+                            document.getElementById('editTodoId').value = todoId;
+                            document.getElementById('editTask').value = todoTask;
+    
+                            // 設置已完成或未完成選項
+                            if (todoCompleted === "true") {
+                                document.getElementById('editCompletedTrue').checked = true;
+                            } else {
+                                document.getElementById('editCompletedFalse').checked = true;
+                            }
+    
+                            // 顯示 Modal
+                            $('#editModal').modal('show');
+                        });
+                    });
+    
+                    // 添加刪除按鈕的事件監聽器
+                    document.querySelectorAll('.delete-btn').forEach(button => {
+                        button.addEventListener('click', async (event) => {
+                            const todoId = event.target.dataset.id;
+                            const student_id = '41241411';
+    
+                            // 確認刪除操作
+                            const result = await Swal.fire({
+                                title: '確認刪除?',
+                                text: "您確定要刪除此代辦事項嗎？",
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonText: '刪除',
+                                cancelButtonText: '取消'
+                            });
+    
+                            if (result.isConfirmed) {
+                                try {
+                                    const response = await fetch(`https://nfutest.pythonanywhere.com/todos/${todoId}`, {
+                                        method: 'DELETE',
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify({ student_id })
+                                    });
+    
+                                    if (response.ok) {
+                                        Swal.fire({
+                                            title: '成功!',
+                                            text: '代辦事項已刪除',
+                                            icon: 'success',
+                                            confirmButtonText: '確認'
+                                        });
+                                        loadTodos();  // 重新加載代辦事項
+                                    } else {
+                                        Swal.fire({
+                                            title: '錯誤',
+                                            text: '刪除失敗',
+                                            icon: 'error',
+                                            confirmButtonText: '確認'
+                                        });
+                                    }
+                                } catch (error) {
+                                    Swal.fire({
+                                        title: '請求失敗',
+                                        text: error.message,
+                                        icon: 'error',
+                                        confirmButtonText: '確認'
+                                    });
+                                }
+                            }
+                        });
+                    });
+                })
+                .catch(error => {
+                    Swal.fire({
+                        title: '請求失敗',
+                        text: error.message,
+                        icon: 'error',
+                        confirmButtonText: '確認'
+                    });
+                });
+        }
+    
+        // 當頁面載入時，抓取代辦事項列表
+        window.onload = loadTodos;
+    
+        // 編輯代辦事項儲存修改
+        editTodoForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const todoId = document.getElementById('editTodoId').value;
+            const task = document.getElementById('editTask').value;
+            const completed = document.querySelector('input[name="editCompleted"]:checked').value === 'true';
+            const student_id = '41241411';
+    
+            const updatedTodo = {
+                student_id,
+                task,
+                completed
+            };
+    
+            try {
+                const response = await fetch(`https://nfutest.pythonanywhere.com/todos/${todoId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedTodo)
+                });
+    
+                if (response.ok) {
+                    Swal.fire({
+                        title: '成功!',
+                        text: '代辦事項已更新',
+                        icon: 'success',
+                        confirmButtonText: '確認'
+                    });
+                    loadTodos(); // 更新列表
+                    $('#editModal').modal('hide'); // 關閉 Modal
+                } else {
+                    const errorData = await response.json();
+                    Swal.fire({
+                        title: '錯誤',
+                        text: errorData.error,
+                        icon: 'error',
+                        confirmButtonText: '確認'
+                    });
+                }
+            } catch (error) {
+                Swal.fire({
+                    title: '請求失敗',
+                    text: error.message,
+                    icon: 'error',
+                    confirmButtonText: '確認'
+                });
+            }
+        });
+    </script>
+    
+</body>
+
+</html>
